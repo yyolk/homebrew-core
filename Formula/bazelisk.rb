@@ -2,16 +2,17 @@ class Bazelisk < Formula
   desc "User-friendly launcher for Bazel"
   homepage "https://github.com/bazelbuild/bazelisk/"
   url "https://github.com/bazelbuild/bazelisk.git",
-      tag:      "v1.6.1",
-      revision: "6f5ce4b2ec4110bbaa9a43ec1b054af7504887d5"
+      tag:      "v1.10.1",
+      revision: "cf1205edacc5bc8a781786b36324922640ea6ac9"
   license "Apache-2.0"
   head "https://github.com/bazelbuild/bazelisk.git"
 
   bottle do
-    cellar :any_skip_relocation
-    sha256 "a12a97c1d1092c7411b965d7f58962853f7599ff986d923ba87e237b1f00d3ba" => :catalina
-    sha256 "1df6a3ae85d691e38a1ce4964b94c1fc429e41eaf2d25d0d666a43293ab5097c" => :mojave
-    sha256 "0a3870c3f3eeb7f71b67b0001a0605380113001ff63d53bec9dbf92bc4ad5415" => :high_sierra
+    sha256 cellar: :any_skip_relocation, arm64_big_sur: "3aa568fb42d31462693efea8051e7ef2489e1f1f22a07500cfd513b0c7f97cf0"
+    sha256 cellar: :any_skip_relocation, big_sur:       "a0589844659d97147c7fab9b3a623192527cfbaed269bf4a502aee0dc2dcef18"
+    sha256 cellar: :any_skip_relocation, catalina:      "4b334992c7b2cd433074e100a3675bc07a7ab64de8fbb35beea250d229d12363"
+    sha256 cellar: :any_skip_relocation, mojave:        "f774b348b3e1403522e6a67126b9791f20245ea3002c23c4786094d82c9a9507"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "49d53dd4a0f10c28bc430501cf4e16fbb90d9ad316076e42c12533ea0daf2261"
   end
 
   depends_on "go" => :build
@@ -19,15 +20,12 @@ class Bazelisk < Formula
   conflicts_with "bazel", because: "Bazelisk replaces the bazel binary"
 
   resource "bazel_zsh_completion" do
-    url "https://raw.githubusercontent.com/bazelbuild/bazel/3.4.1/scripts/zsh_completion/_bazel"
+    url "https://raw.githubusercontent.com/bazelbuild/bazel/036e533/scripts/zsh_completion/_bazel"
     sha256 "4094dc84add2f23823bc341186adf6b8487fbd5d4164bd52d98891c41511eba4"
   end
 
   def install
-    ENV["GOOS"] = "darwin"
-    ENV["GOARCH"] = "amd64"
-
-    system "go", "build", *std_go_args, "-ldflags", "-X main.BazeliskVersion=#{version}"
+    system "go", "build", *std_go_args(ldflags: "-s -w -X main.BazeliskVersion=#{version}")
 
     bin.install_symlink "bazelisk" => "bazel"
 
@@ -38,12 +36,13 @@ class Bazelisk < Formula
 
   test do
     ENV["USE_BAZEL_VERSION"] = Formula["bazel"].version
-    assert_match /Bazelisk version: #{version}/, shell_output("#{bin}/bazelisk version")
+    assert_match "Build label: #{Formula["bazel"].version}", shell_output("#{bin}/bazelisk version")
 
     # This is an older than current version, so that we can test that bazelisk
     # will target an explicit version we specify. This version shouldn't need to
     # be bumped.
-    ENV["USE_BAZEL_VERSION"] = "0.28.0"
-    assert_match /Build label: 0.28.0/, shell_output("#{bin}/bazelisk version")
+    bazel_version = Hardware::CPU.arm? ? "4.1.0" : "4.0.0"
+    ENV["USE_BAZEL_VERSION"] = bazel_version
+    assert_match "Build label: #{bazel_version}", shell_output("#{bin}/bazelisk version")
   end
 end

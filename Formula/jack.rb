@@ -1,58 +1,42 @@
-# This now builds a version of JACKv1 which matches the current API
-# for JACKv2. JACKv2 is not buildable on a number of macOS
-# distributions, and the JACK team instead suggests installation of
-# JACKOSX, a pre-built binary form for which the source is not available.
-# If you require JACKv2, you should use that. Otherwise, this formula should
-# operate fine.
-# Please see https://github.com/Homebrew/homebrew/pull/22043 for more info
 class Jack < Formula
   desc "Audio Connection Kit"
   homepage "https://jackaudio.org/"
-  # pull from git tag to get submodules
-  url "https://github.com/jackaudio/jack1.git",
-      tag:      "0.125.0",
-      revision: "f5e00e485e7aa4c5baa20355b27e3b84a6912790"
-  license "GPL-2.0"
-  revision 4
-  head "https://github.com/jackaudio/jack1.git"
+  url "https://github.com/jackaudio/jack2/archive/v1.9.19.tar.gz"
+  sha256 "9030f4dc11773351b6ac96affd9c89803a5587ebc1b091e5ff866f433327e4b0"
+  license "GPL-2.0-or-later"
+
+  livecheck do
+    url :stable
+    strategy :github_latest
+  end
 
   bottle do
-    sha256 "69f9c5215e993b4b6eee2b31b3585d4df92160ec162a433df76a4a66e9f72b71" => :catalina
-    sha256 "fc489e40c89bfe3315b7d9f6dc1f243aeb03e57741faeb7b4b8f8adfc769c0a7" => :mojave
-    sha256 "169ce5413c397a9cea4d346fd33d5120f1411d92105f39722b2ae8c9ebd881df" => :high_sierra
+    sha256 arm64_big_sur: "cf18a780331e9c43a8ed6ecd26424ebbdffd601d70d02ce785cb33e808833d6d"
+    sha256 big_sur:       "ec0cff191b694dc9b41d1a4e79d954609d1504a60041be12690c5819f4ece9e2"
+    sha256 catalina:      "726a9eb19a6dd938d6869810b22cfcd8a0645a42978c5fc1aeba4bb5f9c42ba1"
+    sha256 mojave:        "120bad55e3a9649ec92a78f847ff0cbfcc2d46508c40dd5a93b314adef809cb0"
   end
 
   depends_on "autoconf" => :build
   depends_on "automake" => :build
   depends_on "libtool" => :build
   depends_on "pkg-config" => :build
+  depends_on "aften"
   depends_on "berkeley-db"
   depends_on "libsamplerate"
   depends_on "libsndfile"
-
-  on_linux do
-    depends_on "util-linux"
-  end
+  depends_on "python@3.9"
 
   def install
-    sdk = MacOS.sdk_path_if_needed ? MacOS.sdk_path : ""
-
-    # Makefile hardcodes Carbon header location
-    inreplace Dir["drivers/coreaudio/Makefile.{am,in}"],
-      "/System/Library/Frameworks/Carbon.framework/Headers/Carbon.h",
-      "#{sdk}/System/Library/Frameworks/Carbon.framework/Headers/Carbon.h"
-
-    # https://github.com/jackaudio/jack1/issues/81
-    inreplace "configure.ac", "-mmacosx-version-min=10.4",
-                              "-mmacosx-version-min=#{MacOS.version}"
-
-    system "./autogen.sh"
-    ENV["LINKFLAGS"] = ENV.ldflags
-    system "./configure", "--prefix=#{prefix}"
-    system "make", "install"
+    # See https://github.com/jackaudio/jack2/issues/640#issuecomment-723022578
+    ENV.append "LDFLAGS", "-Wl,-compatibility_version,1" if MacOS.version <= :high_sierra
+    ENV.append "LDFLAGS", "-Wl,-current_version,#{version}" if MacOS.version <= :high_sierra
+    system Formula["python@3.9"].opt_bin/"python3", "./waf", "configure", "--prefix=#{prefix}"
+    system Formula["python@3.9"].opt_bin/"python3", "./waf", "build"
+    system Formula["python@3.9"].opt_bin/"python3", "./waf", "install"
   end
 
-  plist_options manual: "jackd -d coreaudio"
+  plist_options manual: "jackd -X coremidi -d coreaudio"
 
   def plist
     <<~EOS
@@ -72,6 +56,8 @@ class Jack < Formula
         <key>ProgramArguments</key>
         <array>
           <string>#{opt_bin}/jackd</string>
+          <string>-X</string>
+          <string>coremidi</string>
           <string>-d</string>
           <string>coreaudio</string>
         </array>
@@ -85,6 +71,23 @@ class Jack < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/jackd --version")
+    source_name = "test_source"
+    sink_name = "test_sink"
+    fork do
+      exec "#{bin}/jackd", "-X", "coremidi", "-d", "dummy"
+    end
+    system "#{bin}/jack_wait", "--wait", "--timeout", "10"
+    fork do
+      exec "#{bin}/jack_midiseq", source_name, "16000", "0", "60", "8000"
+    end
+    midi_sink = IO.popen "#{bin}/jack_midi_dump #{sink_name}"
+    sleep 1
+    system "#{bin}/jack_connect", "#{source_name}:out", "#{sink_name}:input"
+    sleep 1
+    Process.kill "TERM", midi_sink.pid
+
+    midi_dump = midi_sink.read
+    assert_match "90 3c 40", midi_dump
+    assert_match "80 3c 40", midi_dump
   end
 end

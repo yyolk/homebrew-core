@@ -2,23 +2,26 @@ class KubernetesCli < Formula
   desc "Kubernetes command-line interface"
   homepage "https://kubernetes.io/"
   url "https://github.com/kubernetes/kubernetes.git",
-      tag:      "v1.19.0",
-      revision: "e19964183377d0ec2052d1f1fa930c4d7575bd50"
+      tag:      "v1.21.3",
+      revision: "ca643a4d1f7bfe34773c74f79527be4afd95bf39"
   license "Apache-2.0"
   head "https://github.com/kubernetes/kubernetes.git"
 
   livecheck do
-    url :head
-    regex(/^v([\d.]+)$/i)
+    url :stable
+    regex(/^v?(\d+(?:\.\d+)+)$/i)
   end
 
   bottle do
-    cellar :any_skip_relocation
-    sha256 "46b7d96c97256a2a4a55fcbb8c72085a76ac6eac1b61a9d030d07ed7537f2c5c" => :catalina
-    sha256 "214b259580cd5d9c0a4c97c5bc56931a3ae86a035ce0c67bc1c12671bcb4f175" => :mojave
-    sha256 "b5a5d643326f9301164e1167d9ad21d9657a55da697da761cf5feb42be629ca2" => :high_sierra
+    sha256 cellar: :any_skip_relocation, arm64_big_sur: "1528b67378e4a963d2c713a42a2e255c34356e0c8a9da71609b44d4b3d76540b"
+    sha256 cellar: :any_skip_relocation, big_sur:       "0718d7295a6e87fe1173450b228af3516a2a9f700552140e5596df0447118996"
+    sha256 cellar: :any_skip_relocation, catalina:      "c75410c56abd2a6b673438c6393870d869820d92eb801f8633dc7c1eda4746bf"
+    sha256 cellar: :any_skip_relocation, mojave:        "a2c2b54fcfb24a83337f2ac30551a916cf2e918f3ac38136240e1b6416e2570f"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "648e50a8afcd000ce1d37f7de94aa02be67df9870d3f2dd442fd429af67e3c55"
   end
 
+  depends_on "bash" => :build
+  depends_on "coreutils" => :build
   depends_on "go" => :build
 
   uses_from_macos "rsync" => :build
@@ -28,6 +31,7 @@ class KubernetesCli < Formula
     rm_rf ".brew_home"
 
     # Make binary
+    ENV.prepend_path "PATH", Formula["coreutils"].libexec/"gnubin" # needs GNU date
     system "make", "WHAT=cmd/kubectl"
     bin.install "_output/bin/kubectl"
 
@@ -50,7 +54,9 @@ class KubernetesCli < Formula
     assert_match "kubectl controls the Kubernetes cluster manager.", run_output
 
     version_output = shell_output("#{bin}/kubectl version --client 2>&1")
+
     assert_match "GitTreeState:\"clean\"", version_output
+
     if build.stable?
       assert_match stable.instance_variable_get(:@resource)
                          .instance_variable_get(:@specs)[:revision],

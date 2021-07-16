@@ -1,9 +1,8 @@
 class Packer < Formula
   desc "Tool for creating identical machine images for multiple platforms"
   homepage "https://packer.io"
-  url "https://github.com/hashicorp/packer.git",
-      tag:      "v1.6.2",
-      revision: "e3ac7de9655b3de4b0b0e0f7563fcfc17d6f5150"
+  url "https://github.com/hashicorp/packer/archive/v1.7.3.tar.gz"
+  sha256 "f08e52321cc5a3ef6651107f8dff29f23cfc6e75f2fdfa87da33d2b5d73e0267"
   license "MPL-2.0"
   head "https://github.com/hashicorp/packer.git"
 
@@ -13,18 +12,26 @@ class Packer < Formula
   end
 
   bottle do
-    cellar :any_skip_relocation
-    sha256 "9065b04cb9f3c1f2277f29fc1ce9091db863dbeffd11e199581ec5e7af9a1b11" => :catalina
-    sha256 "0f4da45578851b73b22f981f5ddd45b1952f37c59a6ff36f572478ec30a76f74" => :mojave
-    sha256 "877c268bc9e608dd5a98124361e159e2c6321669ff24f24140edbe1e0a62db6f" => :high_sierra
+    rebuild 1
+    sha256 cellar: :any_skip_relocation, arm64_big_sur: "ce7fa76aebf2cd8e73214ef7ac51f262addd7baa037839752b195a2a76f4f90c"
+    sha256 cellar: :any_skip_relocation, big_sur:       "3e317dfd6bc295c247f6d31fb6bbb159156709fd1a6c1f7383f01e979e259586"
+    sha256 cellar: :any_skip_relocation, catalina:      "840fb5bbc4c541debdf7083d5683f4c46f4ff3025a21055ee0e393a1562046f6"
+    sha256 cellar: :any_skip_relocation, mojave:        "da3cfaa2a21c2c94381f7e8c8c6e5bf28b046a62f53dc539dccf9a83518c3842"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "e9062232c9659dc6c5feef4ce187181a23dc86c86cd783bb95dbef51d794886f"
   end
 
   depends_on "go" => :build
 
+  # Fix for https://github.com/hashicorp/packer/issues/11140
+  patch do
+    url "https://github.com/hashicorp/packer/commit/0202280167618a95cbd1ec7c57b5ffc1c9f369ba.patch?full_index=1"
+    sha256 "48bb26272d44ace70791f94eae8838c3a64c1f2eb9562f24b39b1e042fc61526"
+  end
+
   def install
-    system "go", "build", *std_go_args
+    system "go", "build", *std_go_args(ldflags: "-s -w")
+
     zsh_completion.install "contrib/zsh-completion/_packer"
-    prefix.install_metafiles
   end
 
   test do

@@ -1,16 +1,17 @@
 class ShadowsocksLibev < Formula
   desc "Libev port of shadowsocks"
   homepage "https://github.com/shadowsocks/shadowsocks-libev"
-  url "https://github.com/shadowsocks/shadowsocks-libev/releases/download/v3.3.4/shadowsocks-libev-3.3.4.tar.gz"
-  sha256 "fce47a956fad0c30def9c71821bcec450a40d3f881548e31e66cedf262b89eb1"
-  license "GPL-3.0"
-  revision 1
+  url "https://github.com/shadowsocks/shadowsocks-libev/releases/download/v3.3.5/shadowsocks-libev-3.3.5.tar.gz"
+  sha256 "cfc8eded35360f4b67e18dc447b0c00cddb29cc57a3cec48b135e5fb87433488"
+  license "GPL-3.0-or-later"
+  revision 3
 
   bottle do
-    cellar :any
-    sha256 "44baecd861835c09a075c620a0599c9ad57042733f9771f1bf4bb4be67edf647" => :catalina
-    sha256 "406e0693ca78d4dbb323dd1b3e03ff2fb94370ea1cd6ef5535de43931441af2b" => :mojave
-    sha256 "03a52b226a287cf73f5c6e13d0da5aecc47212bbefe2506b7a96de1511916d61" => :high_sierra
+    sha256 cellar: :any,                 arm64_big_sur: "e805818adbe42d4f6e4eace4f56dcffd82bf6e55d4e1b3b317108488e8fa3281"
+    sha256 cellar: :any,                 big_sur:       "3086385432f8ab17b26bffbcb755bb120e8b04bb5fcfb9c3dc168e6c938e0283"
+    sha256 cellar: :any,                 catalina:      "1c87e70edb2188b171221790769ee91e3c7de3b7f7e0bc0a481fbc62502a5f97"
+    sha256 cellar: :any,                 mojave:        "7c9b678a11a0debd04e9101c9ba8eaa8b04daaafe8a8ac88d5dca0aa9869e078"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "f946541590e6b200474895f7cf3895ab0c7a6b24a2d9b3ea36dc46663eec6b58"
   end
 
   head do
@@ -26,8 +27,7 @@ class ShadowsocksLibev < Formula
   depends_on "c-ares"
   depends_on "libev"
   depends_on "libsodium"
-  depends_on :macos # Due to Python 2
-  depends_on "mbedtls"
+  depends_on "mbedtls@2"
   depends_on "pcre"
 
   def install

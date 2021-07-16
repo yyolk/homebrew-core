@@ -1,80 +1,36 @@
 class Consul < Formula
   desc "Tool for service discovery, monitoring and configuration"
   homepage "https://www.consul.io"
-  url "https://github.com/hashicorp/consul.git",
-      tag:      "v1.8.3",
-      revision: "a9322b9c77a075e1406f7245cfd8c7bed03271e4"
+  url "https://github.com/hashicorp/consul/archive/refs/tags/v1.10.1.tar.gz"
+  sha256 "c840ba7b52df3ec6105a7febe900e52dde504a33bd1fa4e2e1985a88b6072d41"
   license "MPL-2.0"
-  head "https://github.com/hashicorp/consul.git",
-       shallow: false
+  head "https://github.com/hashicorp/consul.git"
 
   livecheck do
-    url :head
+    url :stable
     regex(/^v?(\d+(?:\.\d+)+)$/i)
   end
 
   bottle do
-    cellar :any_skip_relocation
-    sha256 "6dcf0afd4db64bd5ed5ac19f65d9adae957a2562601be76757ee5a36a7c1cc15" => :catalina
-    sha256 "1afcc842c4eb40b15f4591e8fe6446edf5d94dda87af1c5defeb4274b4c0acf4" => :mojave
-    sha256 "f1c4cf3202c989453575e4e4ed66fb69579f968850e8670967324c9ad4fa1ce5" => :high_sierra
+    sha256 cellar: :any_skip_relocation, arm64_big_sur: "d1094c6e229b6dc82a1ef5b873ca1efe53de937ba289afd428858b3cc3b5076c"
+    sha256 cellar: :any_skip_relocation, big_sur:       "2fb39f2b2122c2bb9b0f29b19ab8e7aaf33c263b74fc3b76a4779fe68c5d7037"
+    sha256 cellar: :any_skip_relocation, catalina:      "279f93c35defe207c789d6643b15762d33ca67365691a6b1c22377825771263a"
+    sha256 cellar: :any_skip_relocation, mojave:        "5b55eeaaef28b9c3bf356807049fe0ba5f4c090e810f3e291d976697ad1425c0"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "17e2e9e442d7e8c306bd06add0189ed964fba340e754197d5a64eb1f9ae7e319"
   end
 
   depends_on "go" => :build
-  depends_on "gox" => :build
-
-  uses_from_macos "zip" => :build
 
   def install
-    ENV["XC_OS"] = "darwin"
-    ENV["XC_ARCH"] = "amd64"
-    ENV["GOPATH"] = buildpath
-    contents = Dir["{*,.git,.gitignore}"]
-    (buildpath/"src/github.com/hashicorp/consul").install contents
-
-    (buildpath/"bin").mkpath
-
-    cd "src/github.com/hashicorp/consul" do
-      system "make"
-      bin.install "bin/consul"
-      prefix.install_metafiles
-    end
+    system "go", "build", *std_go_args(ldflags: "-s -w")
   end
 
-  plist_options manual: "consul agent -dev -bind 127.0.0.1"
-
-  def plist
-    <<~EOS
-      <?xml version="1.0" encoding="UTF-8"?>
-      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      <plist version="1.0">
-        <dict>
-          <key>KeepAlive</key>
-          <dict>
-            <key>SuccessfulExit</key>
-            <false/>
-          </dict>
-          <key>Label</key>
-          <string>#{plist_name}</string>
-          <key>ProgramArguments</key>
-          <array>
-            <string>#{opt_bin}/consul</string>
-            <string>agent</string>
-            <string>-dev</string>
-            <string>-bind</string>
-            <string>127.0.0.1</string>
-          </array>
-          <key>RunAtLoad</key>
-          <true/>
-          <key>WorkingDirectory</key>
-          <string>#{var}</string>
-          <key>StandardErrorPath</key>
-          <string>#{var}/log/consul.log</string>
-          <key>StandardOutPath</key>
-          <string>#{var}/log/consul.log</string>
-        </dict>
-      </plist>
-    EOS
+  service do
+    run [opt_bin/"consul", "agent", "-dev", "-bind", "127.0.0.1"]
+    keep_alive true
+    error_log_path var/"log/consul.log"
+    log_path var/"log/consul.log"
+    working_dir var
   end
 
   test do
